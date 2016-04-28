@@ -47,14 +47,9 @@ class Dispatcher
             }
 
             $response->render();
-            die('fds');
-
-            /**/
-
-            // post filters
 
         } catch (\Exception $e) {
-
+            die('Unknown error ' . $e->getMessage());
         }
     }
 
@@ -94,10 +89,9 @@ class Dispatcher
         $endpoint = getenv('ENDPOINT');
         $controller = $endpoint . "Controller";
         $includePath = '/../src/' . $path . '/' . $controller . '.php';
-        error_log($includePath);
-        //require_once __DIR__ . $includePath;
+        require_once __DIR__ . $includePath;
         
-        $controller = new FriendsListController();//TODO
+        $controller = new $controller();
 
         return $controller;
     }

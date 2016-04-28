@@ -1,12 +1,10 @@
 <?php
 /**
- * Created by PhpStorm.
- * User: julian
+ * Controller para encapsular la lógica para obtener la lista de amigos
  * Date: 28/04/16
- * Time: 12:41
  */
 
-namespace app\domain\chat;
+//namespace app\domain\chat;
 
 /**
  * Some constants
@@ -29,42 +27,45 @@ class FriendsListController extends MicrofController
          * Check configuration
          */
         if (empty($redisHost) || empty($redisPort)) {
-            http_response_code(500);
-            echo json_encode(['error' => true, 'message' => 'Server error, invalid redis configuration.']);
-            exit();
+            throw new \Exception('Server error, invalid redis configuration.');
+        } else {
+            // Create a new Redis connection
+            $redis = new \Redis();
+            $redis->connect($redisHost, $redisPort);
+
+            if (!$redis->isConnected()) {
+                throw new \Exception('Server error, can\'t connect.');
+            } else {
+                // Set Redis serialization strategy
+                $redis->setOption(\Redis::OPT_SERIALIZER, \Redis::SERIALIZER_PHP);
+                $this->redis = $redis;
+            }
         }
-
-        // Create a new Redis connection
-        $redis = new \Redis();
-        $redis->connect($redisHost, $redisPort);
-
-        if (!$redis->isConnected()) {
-            http_response_code(500);
-            echo json_encode(['error' => true, 'message' => 'Server error, can\'t connect.']);
-            exit();
-        }
-
-        // Set Redis serialization strategy
-        $redis->setOption(\Redis::OPT_SERIALIZER, \Redis::SERIALIZER_PHP);
-
-        $this->redis = $redis;
     }
 
     public function preAction($request)
     {
         $response = true;
-        $this->setRedis();
 
-        /**
-         * No cookie, no session ID.
-         */
-        if (empty($_COOKIE['app'])) {
-            $response = new ErrorResponse(403, 'Not a valid session.');
+        try {
+            $this->setRedis();
+            /**
+             * No cookie, no session ID.
+             */
+            if (empty($_COOKIE['app'])) {
+                $response = new ErrorResponse(403, 'Not a valid session.');
+            }
+        } catch (\Exception $e) {
+            $response = new ErrorResponse(500, $e->getMessage());
         }
 
         return $response;
     }
 
+    /**
+     * @param $request
+     * @return ErrorResponse|JsonResponse
+     */
     public function action($request)
     {
         try {
@@ -79,12 +80,11 @@ class FriendsListController extends MicrofController
                 $friendsList = $this->redis->get(str_replace('{:userId}', $session['default']['id'], FRIENDS_CACHE_PREFIX_KEY));
                 if (!$friendsList) {
                     // No friends list yet.
-                    http_response_code(200);
-                    echo json_encode([]);
-                    exit();
+                    return $response;
                 }
             } else {
                 $response = new ErrorResponse(404, 'Friends list not available.');
+                return $response;
             }
 
             $friendUserIds = $friendsList->getUserIds();
@@ -111,9 +111,7 @@ class FriendsListController extends MicrofController
             $response->setDataArray($friendsList->toArray());
 
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['error' => true, 'message' => 'Unknown exception. ' . $e->getMessage()]);
-            exit();
+            $response = new ErrorResponse(500, 'Unknown exception. ' . $e->getMessage());
         }
 
         return $response;
