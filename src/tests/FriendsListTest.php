@@ -73,9 +73,11 @@ class FriendsListTest extends \PHPUnit_Framework_TestCase
      * Función auxiliar para hacer un pedido por curl al microservicio FriendsList
      * @return mixed
      */
-    private function makeRequest() {
+    private function makeRequest($cookie) {
         $handle = curl_init(self::$URL);
-        curl_setopt($handle, CURLOPT_COOKIE, self::$COOKIE);
+        if ($cookie) {
+            curl_setopt($handle, CURLOPT_COOKIE, $cookie);
+        }
         curl_setopt($handle, CURLOPT_RETURNTRANSFER, 1);
         $response = curl_exec($handle);
         curl_close($handle);
@@ -84,7 +86,7 @@ class FriendsListTest extends \PHPUnit_Framework_TestCase
     }
 
     public function testFriendsListNotAvailable() {
-        $response = $this->makeRequest();
+        $response = $this->makeRequest(self::$COOKIE);
         $expectedJson = '{"error":true,"message":"Friends list not available."}';
         $expectedArray = json_decode($expectedJson, true);
 
@@ -93,13 +95,34 @@ class FriendsListTest extends \PHPUnit_Framework_TestCase
 
     public function testSampleFriendsList() {
         $this->saveSampleData();
-        $response = $this->makeRequest();
+        $response = $this->makeRequest(self::$COOKIE);
         $expectedJson = '[{"id":1,"name":"Project 1","threads":[{"online":true,"other_party":{"user_id":176733}}]},{"id":2,"name":"Project 2","threads":[{"online":true,"other_party":{"user_id":176733}}]}]';
         $expectedArray = json_decode($expectedJson, true);
 
         $this->assertEquals($expectedArray, $response);
     }
 
-    
+    /**
+     * Comparar con "Not a valid session."
+     */
+    public function testFriendsListWithoutCookie() {
+
+    }
+
+    /**
+     * Obtener la lista de amigos. Agregar uno y guardarlo
+     */
+    public function testAddOnlineFriendsList() {
+
+    }
+
+    /**
+     * Luego de agregar uno, comprobar que esté
+     */
+    public function testGetNewFriendFromFriendsList() {
+        
+    }
+
+
 
 }
